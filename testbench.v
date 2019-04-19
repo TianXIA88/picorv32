@@ -17,6 +17,10 @@ module testbench #(
 	wire trap;
 
 	always #5 clk = ~clk;
+	
+	initial begin
+            $display("============ 0 ===========");
+    end
 
 	initial begin
 		repeat (100) @(posedge clk);
@@ -50,6 +54,10 @@ module testbench #(
 			$display("Finished writing testbench.trace.");
 		end
 	end
+	
+	initial begin
+    	$display("============ 1 ===========");
+    end
 
 	picorv32_wrapper #(
 		.AXI_TEST (AXI_TEST),
@@ -81,6 +89,9 @@ module picorv32_wrapper #(
 		irq = 0;
 		irq[4] = &uut.picorv32_core.count_cycle[12:0];
 		irq[5] = &uut.picorv32_core.count_cycle[15:0];
+		if(uut.picorv32_core.count_cycle == 49759)begin
+		      irq[4] = 1;
+		end
 	end
 
 	wire        mem_axi_awvalid;
@@ -246,7 +257,8 @@ module picorv32_wrapper #(
 	reg [1023:0] firmware_file;
 	initial begin
 		if (!$value$plusargs("firmware=%s", firmware_file))
-			firmware_file = "firmware/firmware.hex";
+			firmware_file = "/home/xiatian/Work/picorv32/firmware/firmware.hex";
+		$display("READ IN TEST PROGRAM.");
 		$readmemh(firmware_file, mem.memory);
 	end
 

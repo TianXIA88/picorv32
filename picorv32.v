@@ -1489,7 +1489,7 @@ module picorv32 #(
 					end
 					ENABLE_IRQ && irq_state[1]: begin
 						eoi <= irq_pending & ~irq_mask;
-						next_irq_pending = next_irq_pending & irq_mask;
+						next_irq_pending = next_irq_pending & irq_mask | irq;
 					end
 				endcase
 
