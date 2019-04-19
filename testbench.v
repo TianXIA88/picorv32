@@ -257,7 +257,7 @@ module picorv32_wrapper #(
 	reg [1023:0] firmware_file;
 	initial begin
 		if (!$value$plusargs("firmware=%s", firmware_file))
-			firmware_file = "/home/xiatian/Work/picorv32/firmware/firmware.hex";
+			firmware_file = "/home/xiatian/Work/picorv32_dpu/picorv32/debug/firmware.hex";
 		$display("READ IN TEST PROGRAM.");
 		$readmemh(firmware_file, mem.memory);
 	end
