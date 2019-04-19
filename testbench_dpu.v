@@ -87,11 +87,21 @@ module picorv32_wrapper #(
 
 	always @* begin
 		irq = 0;
-		// irq[4] = &uut.picorv32_core.count_cycle[12:0];
-		// irq[5] = &uut.picorv32_core.count_cycle[15:0];
+	
+		if(&uut.picorv32_core.count_cycle[12:0]) begin
+		  irq = 8 << uut.picorv32_core.count_cycle[16:13];
+		  $display("IRQ %08x IS RAISED", irq);
+		end
+		// if(&uut.picorv32_core.count_cycle[15:0]) begin
+		//   $display("IRQ 5 IS RAISED");
+    	//   irq[5] = 1;
+    	//  end
+		if(uut.picorv32_core.count_cycle[17] == 1)begin
+		      $finish;
+		end
 		// if(uut.picorv32_core.count_cycle == 49759)begin
 		//      irq[4] = 1;
-		end
+		// end
 	end
 
 	wire        mem_axi_awvalid;
@@ -314,7 +324,7 @@ module axi4_memory #(
 
 	output reg        tests_passed
 );
-	reg [31:0]   memory [0:64*1024/4-1] /* verilator public */;
+	reg [7:0]   memory [0:64*1024-1] /* verilator public */;
 	reg verbose;
 	initial verbose = $test$plusargs("verbose") || VERBOSE;
 
@@ -391,14 +401,17 @@ module axi4_memory #(
 
 	task handle_axi_rvalid; begin
 		if (verbose)
-			$display("RD: ADDR=%08x DATA=%08x%s", latched_raddr, memory[latched_raddr >> 2], latched_rinsn ? " INSN" : "");
+			$display("RD: ADDR=%08x DATA=%08x%s", latched_raddr, memory[latched_raddr], latched_rinsn ? " INSN" : "");
 		if (latched_raddr < 64*1024) begin
-			mem_axi_rdata <= memory[latched_raddr >> 2];
+			mem_axi_rdata[7:  0] <= memory[latched_raddr];
+			mem_axi_rdata[15: 8] <= memory[latched_raddr + 1];
+			mem_axi_rdata[23:16] <= memory[latched_raddr + 2];
+			mem_axi_rdata[31:24] <= memory[latched_raddr + 3];
 			mem_axi_rvalid <= 1;
 			latched_raddr_en = 0;
 		end else begin
 			$display("OUT-OF-BOUNDS MEMORY READ FROM %08x", latched_raddr);
-			$finish;
+			// $finish;
 		end
 	end endtask
 
@@ -406,12 +419,16 @@ module axi4_memory #(
 		if (verbose)
 			$display("WR: ADDR=%08x DATA=%08x STRB=%04b", latched_waddr, latched_wdata, latched_wstrb);
 		if (latched_waddr < 64*1024) begin
-			if (latched_wstrb[0]) memory[latched_waddr >> 2][ 7: 0] <= latched_wdata[ 7: 0];
-			if (latched_wstrb[1]) memory[latched_waddr >> 2][15: 8] <= latched_wdata[15: 8];
-			if (latched_wstrb[2]) memory[latched_waddr >> 2][23:16] <= latched_wdata[23:16];
-			if (latched_wstrb[3]) memory[latched_waddr >> 2][31:24] <= latched_wdata[31:24];
-		end else
-		if (latched_waddr == 32'h1000_0000) begin
+			if (latched_wstrb[0]) memory[latched_waddr    ] <= latched_wdata[ 7: 0];
+			if (latched_wstrb[1]) memory[latched_waddr + 1] <= latched_wdata[15: 8];
+			if (latched_wstrb[2]) memory[latched_waddr + 2] <= latched_wdata[23:16];
+			if (latched_wstrb[3]) memory[latched_waddr + 3] <= latched_wdata[31:24];
+			if (latched_waddr >= 32'h0000_8da4 && latched_waddr <= 32'h0000_8dbc)begin
+			     $display("IRQ MEMORY WRITE DATA %08x TO %08x", latched_wdata, latched_waddr);
+			end
+		end 
+		/*
+		else if (latched_waddr == 32'h1000_0000) begin
 			if (verbose) begin
 				if (32 <= latched_wdata && latched_wdata < 128)
 					$display("OUT: '%c'", latched_wdata[7:0]);
@@ -423,13 +440,15 @@ module axi4_memory #(
 				$fflush();
 `endif
 			end
-		end else
-		if (latched_waddr == 32'h2000_0000) begin
+		end 
+		else if (latched_waddr == 32'h2000_0000) begin
 			if (latched_wdata == 123456789)
 				tests_passed = 1;
-		end else begin
-			$display("OUT-OF-BOUNDS MEMORY WRITE TO %08x", latched_waddr);
-			$finish;
+		end 
+		*/
+		else begin
+			$display("OUT-OF-BOUNDS MEMORY WRITE DATA %08x TO %08x", latched_wdata, latched_waddr);
+			// $finish;
 		end
 		mem_axi_bvalid <= 1;
 		latched_waddr_en = 0;
